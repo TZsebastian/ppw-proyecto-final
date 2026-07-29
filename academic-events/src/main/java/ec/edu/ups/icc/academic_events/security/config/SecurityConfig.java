@@ -142,7 +142,6 @@ public class SecurityConfig {
                                                                 "/api/sessions/**")
                                                 .hasAnyRole("ADMIN", "ORGANIZER")
 
-                                                // Todo lo demás requiere autenticación
                                                 .anyRequest()
                                                 .authenticated())
 
