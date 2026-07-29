@@ -5,7 +5,6 @@ import ec.edu.ups.icc.academic_events.security.repositories.RoleRepository;
 import ec.edu.ups.icc.academic_events.users.dtos.UserCreateRequestDTO;
 import ec.edu.ups.icc.academic_events.users.dtos.UserResponseDTO;
 import ec.edu.ups.icc.academic_events.users.dtos.UserRolesRequestDTO;
-import ec.edu.ups.icc.academic_events.users.dtos.UserStatusRequestDTO;
 import ec.edu.ups.icc.academic_events.users.dtos.UserUpdateRequestDTO;
 import ec.edu.ups.icc.academic_events.users.entities.UserEntity;
 import ec.edu.ups.icc.academic_events.users.mappers.UserMapper;
@@ -28,11 +27,12 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class UserService {
 
+    private static final String STATUS_ACTIVE = "ACTIVE";
+    private static final String STATUS_BLOCKED = "BLOCKED";
+    private static final String ROLE_ADMIN = "ADMIN";
+
     private static final Set<String> VALID_ROLES =
             Set.of("ADMIN", "ORGANIZER", "PARTICIPANT");
-
-    private static final Set<String> VALID_STATUSES =
-            Set.of("ACTIVE", "BLOCKED");
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -62,52 +62,62 @@ public class UserService {
         }
 
         UserEntity user = new UserEntity();
-        user.setFirstName(request.firstName().trim());
-        user.setLastName(request.lastName().trim());
+        user.setFirstName(normalizeRequiredText(
+                request.firstName(),
+                "El nombre es obligatorio"
+        ));
+        user.setLastName(normalizeRequiredText(
+                request.lastName(),
+                "El apellido es obligatorio"
+        ));
         user.setEmail(normalizedEmail);
-        user.setPasswordHash(passwordEncoder.encode(request.password()));
-        user.setStatus("ACTIVE");
+        user.setPasswordHash(
+                passwordEncoder.encode(request.password())
+        );
+        user.setStatus(STATUS_ACTIVE);
         user.setRoles(resolveRoles(request.roles()));
 
         LocalDateTime now = LocalDateTime.now();
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
 
-        return userMapper.toResponse(userRepository.save(user));
+        UserEntity savedUser = userRepository.save(user);
+
+        return userMapper.toResponse(savedUser);
     }
 
     @Transactional
-    public UserResponseDTO update(Long id, UserUpdateRequestDTO request) {
+    public UserResponseDTO update(
+            Long id,
+            UserUpdateRequestDTO request
+    ) {
         UserEntity user = findEntityById(id);
         String normalizedEmail = normalizeEmail(request.email());
 
-        if (userRepository.existsByEmailAndIdNot(normalizedEmail, id)) {
+        if (userRepository.existsByEmailAndIdNot(
+                normalizedEmail,
+                id
+        )) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Ya existe otro usuario con ese correo"
             );
         }
 
-        user.setFirstName(request.firstName().trim());
-        user.setLastName(request.lastName().trim());
+        user.setFirstName(normalizeRequiredText(
+                request.firstName(),
+                "El nombre es obligatorio"
+        ));
+        user.setLastName(normalizeRequiredText(
+                request.lastName(),
+                "El apellido es obligatorio"
+        ));
         user.setEmail(normalizedEmail);
         user.setUpdatedAt(LocalDateTime.now());
 
-        return userMapper.toResponse(userRepository.save(user));
-    }
+        UserEntity savedUser = userRepository.save(user);
 
-    @Transactional
-    public UserResponseDTO updateStatus(
-            Long id,
-            UserStatusRequestDTO request
-    ) {
-        UserEntity user = findEntityById(id);
-        String normalizedStatus = normalizeStatus(request.status());
-
-        user.setStatus(normalizedStatus);
-        user.setUpdatedAt(LocalDateTime.now());
-
-        return userMapper.toResponse(userRepository.save(user));
+        return userMapper.toResponse(savedUser);
     }
 
     @Transactional
@@ -117,10 +127,55 @@ public class UserService {
     ) {
         UserEntity user = findEntityById(id);
 
-        user.setRoles(resolveRoles(request.roles()));
+        Set<RoleEntity> newRoles = resolveRoles(request.roles());
+
+        validateRemovingLastAdministrator(user, newRoles);
+
+        user.setRoles(newRoles);
         user.setUpdatedAt(LocalDateTime.now());
 
-        return userMapper.toResponse(userRepository.save(user));
+        UserEntity savedUser = userRepository.save(user);
+
+        return userMapper.toResponse(savedUser);
+    }
+
+    @Transactional
+    public UserResponseDTO block(
+            Long id,
+            String authenticatedEmail
+    ) {
+        UserEntity user = findEntityById(id);
+
+        validateCannotBlockSelf(user, authenticatedEmail);
+
+        if (STATUS_BLOCKED.equals(user.getStatus())) {
+            return userMapper.toResponse(user);
+        }
+
+        validateNotLastActiveAdministrator(user);
+
+        user.setStatus(STATUS_BLOCKED);
+        user.setUpdatedAt(LocalDateTime.now());
+
+        UserEntity savedUser = userRepository.save(user);
+
+        return userMapper.toResponse(savedUser);
+    }
+
+    @Transactional
+    public UserResponseDTO unblock(Long id) {
+        UserEntity user = findEntityById(id);
+
+        if (STATUS_ACTIVE.equals(user.getStatus())) {
+            return userMapper.toResponse(user);
+        }
+
+        user.setStatus(STATUS_ACTIVE);
+        user.setUpdatedAt(LocalDateTime.now());
+
+        UserEntity savedUser = userRepository.save(user);
+
+        return userMapper.toResponse(savedUser);
     }
 
     private UserEntity findEntityById(Long id) {
@@ -131,7 +186,9 @@ public class UserService {
                 ));
     }
 
-    private Set<RoleEntity> resolveRoles(Set<String> requestedRoles) {
+    private Set<RoleEntity> resolveRoles(
+            Set<String> requestedRoles
+    ) {
         if (requestedRoles == null || requestedRoles.isEmpty()) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -145,11 +202,109 @@ public class UserService {
 
         return normalizedRoles.stream()
                 .map(roleName -> roleRepository.findByName(roleName)
-                        .orElseThrow(() -> new ResponseStatusException(
-                                HttpStatus.BAD_REQUEST,
-                                "El rol " + roleName + " no existe"
-                        )))
+                        .orElseThrow(() ->
+                                new ResponseStatusException(
+                                        HttpStatus.BAD_REQUEST,
+                                        "El rol " + roleName
+                                                + " no existe"
+                                )
+                        ))
                 .collect(Collectors.toSet());
+    }
+
+    private void validateCannotBlockSelf(
+            UserEntity targetUser,
+            String authenticatedEmail
+    ) {
+        if (authenticatedEmail == null
+                || authenticatedEmail.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "No se pudo identificar al usuario autenticado"
+            );
+        }
+
+        if (targetUser.getEmail().equalsIgnoreCase(
+                authenticatedEmail.trim()
+        )) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Un administrador no puede bloquearse a sí mismo"
+            );
+        }
+    }
+
+    private void validateNotLastActiveAdministrator(
+            UserEntity user
+    ) {
+        boolean isAdministrator = hasRole(user, ROLE_ADMIN);
+        boolean isActive = STATUS_ACTIVE.equals(user.getStatus());
+
+        if (!isAdministrator || !isActive) {
+            return;
+        }
+
+        long activeAdministrators =
+                userRepository
+                        .countDistinctByStatusAndRoles_Name(
+                                STATUS_ACTIVE,
+                                ROLE_ADMIN
+                        );
+
+        if (activeAdministrators <= 1) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "No se puede bloquear al último administrador activo"
+            );
+        }
+    }
+
+    private void validateRemovingLastAdministrator(
+            UserEntity user,
+            Set<RoleEntity> newRoles
+    ) {
+        boolean currentlyAdministrator =
+                hasRole(user, ROLE_ADMIN);
+
+        boolean remainsAdministrator = newRoles.stream()
+                .anyMatch(role ->
+                        ROLE_ADMIN.equals(role.getName())
+                );
+
+        boolean isActive =
+                STATUS_ACTIVE.equals(user.getStatus());
+
+        if (!currentlyAdministrator
+                || remainsAdministrator
+                || !isActive) {
+            return;
+        }
+
+        long activeAdministrators =
+                userRepository
+                        .countDistinctByStatusAndRoles_Name(
+                                STATUS_ACTIVE,
+                                ROLE_ADMIN
+                        );
+
+        if (activeAdministrators <= 1) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "No se puede retirar el rol ADMIN "
+                            + "al último administrador activo"
+            );
+        }
+    }
+
+    private boolean hasRole(
+            UserEntity user,
+            String roleName
+    ) {
+        return user.getRoles()
+                .stream()
+                .anyMatch(role ->
+                        roleName.equals(role.getName())
+                );
     }
 
     private String normalizeRole(String role) {
@@ -173,28 +328,28 @@ public class UserService {
         return normalizedRole;
     }
 
-    private String normalizeStatus(String status) {
-        if (status == null || status.isBlank()) {
+    private String normalizeEmail(String email) {
+        if (email == null || email.isBlank()) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "El estado es obligatorio"
+                    "El correo es obligatorio"
             );
         }
 
-        String normalizedStatus = status.trim()
-                .toUpperCase(Locale.ROOT);
-
-        if (!VALID_STATUSES.contains(normalizedStatus)) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "El estado debe ser ACTIVE o BLOCKED"
-            );
-        }
-
-        return normalizedStatus;
+        return email.trim().toLowerCase(Locale.ROOT);
     }
 
-    private String normalizeEmail(String email) {
-        return email.trim().toLowerCase(Locale.ROOT);
+    private String normalizeRequiredText(
+            String value,
+            String errorMessage
+    ) {
+        if (value == null || value.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    errorMessage
+            );
+        }
+
+        return value.trim().replaceAll("\\s+", " ");
     }
 }
