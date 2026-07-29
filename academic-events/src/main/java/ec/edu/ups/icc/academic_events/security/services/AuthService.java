@@ -43,6 +43,7 @@ public class AuthService {
         private final JwtUtil jwtUtil;
         private final JwtProperties jwtProperties;
         private final RateLimitService rateLimitService;
+        private final LoginAttemptService loginAttemptService;
 
         public AuthService(
                         UserRepository userRepository,
@@ -52,7 +53,8 @@ public class AuthService {
                         AuthenticationManager authenticationManager,
                         JwtUtil jwtUtil,
                         JwtProperties jwtProperties,
-                        RateLimitService rateLimitService) {
+                        RateLimitService rateLimitService,
+                        LoginAttemptService loginAttemptService) {
                 this.userRepository = userRepository;
                 this.roleRepository = roleRepository;
                 this.refreshTokenRepository = refreshTokenRepository;
@@ -61,6 +63,7 @@ public class AuthService {
                 this.jwtUtil = jwtUtil;
                 this.jwtProperties = jwtProperties;
                 this.rateLimitService = rateLimitService;
+                this.loginAttemptService = loginAttemptService;
         }
 
         @Transactional
@@ -106,7 +109,13 @@ public class AuthService {
                         String clientIp) {
                 String normalizedEmail = normalizeEmail(request.email());
 
+                
                 rateLimitService.checkLoginLimit(
+                                clientIp,
+                                normalizedEmail);
+
+                
+                loginAttemptService.checkBlocked(
                                 clientIp,
                                 normalizedEmail);
 
@@ -117,11 +126,23 @@ public class AuthService {
                                         new UsernamePasswordAuthenticationToken(
                                                         normalizedEmail,
                                                         request.password()));
+
                 } catch (BadCredentialsException exception) {
+
+                        
+                        loginAttemptService.registerFailure(
+                                        clientIp,
+                                        normalizedEmail);
+
                         throw new ResponseStatusException(
                                         HttpStatus.UNAUTHORIZED,
                                         "Credenciales inválidas");
                 }
+
+                
+                loginAttemptService.registerSuccess(
+                                clientIp,
+                                normalizedEmail);
 
                 UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
 
@@ -132,7 +153,9 @@ public class AuthService {
 
                 revokeActiveTokens(user.getId());
 
-                return createTokenResponse(user, clientIp);
+                return createTokenResponse(
+                                user,
+                                clientIp);
         }
 
         @Transactional
