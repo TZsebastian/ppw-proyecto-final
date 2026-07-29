@@ -22,130 +22,156 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final UserDetailsServiceImpl userDetailsService;
+        private final JwtAuthenticationFilter jwtAuthenticationFilter;
+        private final UserDetailsServiceImpl userDetailsService;
 
-    public SecurityConfig(
-            JwtAuthenticationFilter jwtAuthenticationFilter,
-            UserDetailsServiceImpl userDetailsService
-    ) {
-        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-        this.userDetailsService = userDetailsService;
-    }
+        public SecurityConfig(
+                        JwtAuthenticationFilter jwtAuthenticationFilter,
+                        UserDetailsServiceImpl userDetailsService) {
+                this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+                this.userDetailsService = userDetailsService;
+        }
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(
-            HttpSecurity http
-    ) throws Exception {
+        @Bean
+        public SecurityFilterChain securityFilterChain(
+                        HttpSecurity http) throws Exception {
 
-        http
-                .csrf(csrf -> csrf.disable())
-                .cors(Customizer.withDefaults())
+                http
+                                .csrf(csrf -> csrf.disable())
+                                .cors(Customizer.withDefaults())
 
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(
-                                SessionCreationPolicy.STATELESS
-                        )
-                )
+                                .sessionManagement(session -> session.sessionCreationPolicy(
+                                                SessionCreationPolicy.STATELESS))
 
-                .authorizeHttpRequests(auth -> auth
+                                .authorizeHttpRequests(auth -> auth
 
-                        .requestMatchers("/api/auth/**")
-                        .permitAll()
+                                                .requestMatchers(
+                                                                HttpMethod.POST,
+                                                                "/api/auth/register",
+                                                                "/api/auth/login",
+                                                                "/api/auth/refresh",
+                                                                "/api/auth/logout")
+                                                .permitAll()
 
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/api/events/**",
-                                "/api/categories/**",
-                                "/api/sessions/**"
-                        )
-                        .permitAll()
+                                                .requestMatchers(
+                                                                HttpMethod.GET,
+                                                                "/api/auth/me")
+                                                .authenticated()
 
-                        .requestMatchers("/actuator/health")
-                        .permitAll()
+                                      
+                                                .requestMatchers(
+                                                                HttpMethod.GET,
+                                                                "/api/events/**",
+                                                                "/api/categories/**",
+                                                                "/api/sessions/**")
+                                                .permitAll()
 
-                        .requestMatchers(
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/v3/api-docs/**"
-                        )
-                        .permitAll()
+                                
+                                                .requestMatchers("/actuator/health")
+                                                .permitAll()
 
-                        .requestMatchers("/api/users/**")
-                        .hasRole("ADMIN")
+                               
+                                                .requestMatchers(
+                                                                "/swagger-ui/**",
+                                                                "/swagger-ui.html",
+                                                                "/v3/api-docs/**")
+                                                .permitAll()
 
-                        .requestMatchers(
-                                HttpMethod.POST,
-                                "/api/categories/**"
-                        )
-                        .hasRole("ADMIN")
+                                                
+                                                .requestMatchers("/api/users/**")
+                                                .hasRole("ADMIN")
 
-                        .requestMatchers(
-                                HttpMethod.PUT,
-                                "/api/categories/**"
-                        )
-                        .hasRole("ADMIN")
+                                        
+                                                .requestMatchers(
+                                                                HttpMethod.POST,
+                                                                "/api/categories/**")
+                                                .hasRole("ADMIN")
 
-                        .requestMatchers(
-                                HttpMethod.DELETE,
-                                "/api/categories/**"
-                        )
-                        .hasRole("ADMIN")
+                                                .requestMatchers(
+                                                                HttpMethod.PUT,
+                                                                "/api/categories/**")
+                                                .hasRole("ADMIN")
 
-                        .requestMatchers(
-                                HttpMethod.POST,
-                                "/api/events/**",
-                                "/api/sessions/**"
-                        )
-                        .hasAnyRole("ADMIN", "ORGANIZER")
+                                                .requestMatchers(
+                                                                HttpMethod.PATCH,
+                                                                "/api/categories/**")
+                                                .hasRole("ADMIN")
 
-                        .requestMatchers(
-                                HttpMethod.PUT,
-                                "/api/events/**",
-                                "/api/sessions/**"
-                        )
-                        .hasAnyRole("ADMIN", "ORGANIZER")
+                                                .requestMatchers(
+                                                                HttpMethod.DELETE,
+                                                                "/api/categories/**")
+                                                .hasRole("ADMIN")
 
-                        .requestMatchers(
-                                HttpMethod.DELETE,
-                                "/api/events/**",
-                                "/api/sessions/**"
-                        )
-                        .hasAnyRole("ADMIN", "ORGANIZER")
+                                                // Eventos: escritura ADMIN u ORGANIZER
+                                                .requestMatchers(
+                                                                HttpMethod.POST,
+                                                                "/api/events/**")
+                                                .hasAnyRole("ADMIN", "ORGANIZER")
 
-                        .anyRequest()
-                        .authenticated()
-                )
+                                                .requestMatchers(
+                                                                HttpMethod.PUT,
+                                                                "/api/events/**")
+                                                .hasAnyRole("ADMIN", "ORGANIZER")
 
-                .authenticationProvider(authenticationProvider())
+                                                .requestMatchers(
+                                                                HttpMethod.PATCH,
+                                                                "/api/events/**")
+                                                .hasAnyRole("ADMIN", "ORGANIZER")
 
-                .addFilterBefore(
-                        jwtAuthenticationFilter,
-                        UsernamePasswordAuthenticationFilter.class
-                );
+                                                .requestMatchers(
+                                                                HttpMethod.DELETE,
+                                                                "/api/events/**")
+                                                .hasAnyRole("ADMIN", "ORGANIZER")
 
-        return http.build();
-    }
+                                                .requestMatchers(
+                                                                HttpMethod.POST,
+                                                                "/api/sessions/**")
+                                                .hasAnyRole("ADMIN", "ORGANIZER")
 
-    @Bean
-    public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider provider =
-                new DaoAuthenticationProvider(userDetailsService);
+                                                .requestMatchers(
+                                                                HttpMethod.PUT,
+                                                                "/api/sessions/**")
+                                                .hasAnyRole("ADMIN", "ORGANIZER")
 
-        provider.setPasswordEncoder(passwordEncoder());
+                                                .requestMatchers(
+                                                                HttpMethod.PATCH,
+                                                                "/api/sessions/**")
+                                                .hasAnyRole("ADMIN", "ORGANIZER")
 
-        return provider;
-    }
+                                                .requestMatchers(
+                                                                HttpMethod.DELETE,
+                                                                "/api/sessions/**")
+                                                .hasAnyRole("ADMIN", "ORGANIZER")
 
-    @Bean
-    public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration configuration
-    ) throws Exception {
-        return configuration.getAuthenticationManager();
-    }
+                                                .anyRequest()
+                                                .authenticated())
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+                                .authenticationProvider(authenticationProvider())
+
+                                .addFilterBefore(
+                                                jwtAuthenticationFilter,
+                                                UsernamePasswordAuthenticationFilter.class);
+
+                return http.build();
+        }
+
+        @Bean
+        public AuthenticationProvider authenticationProvider() {
+                DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
+
+                provider.setPasswordEncoder(passwordEncoder());
+
+                return provider;
+        }
+
+        @Bean
+        public AuthenticationManager authenticationManager(
+                        AuthenticationConfiguration configuration) throws Exception {
+                return configuration.getAuthenticationManager();
+        }
+
+        @Bean
+        public PasswordEncoder passwordEncoder() {
+                return new BCryptPasswordEncoder();
+        }
 }

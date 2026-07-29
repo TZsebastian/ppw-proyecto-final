@@ -43,7 +43,7 @@ public class UserEntity {
     private String passwordHash;
 
     @Column(nullable = false, length = 20)
-    private String status; // ACTIVE, BLOCKED
+    private String status; 
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
