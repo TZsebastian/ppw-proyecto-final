@@ -45,6 +45,7 @@ public class SecurityConfig {
 
                                 .authorizeHttpRequests(auth -> auth
 
+                                                // Autenticación pública
                                                 .requestMatchers(
                                                                 HttpMethod.POST,
                                                                 "/api/auth/register",
@@ -53,35 +54,36 @@ public class SecurityConfig {
                                                                 "/api/auth/logout")
                                                 .permitAll()
 
+                                                // Usuario autenticado
                                                 .requestMatchers(
                                                                 HttpMethod.GET,
                                                                 "/api/auth/me")
                                                 .authenticated()
 
+                                                // Actuator
                                                 .requestMatchers(
-                                                                HttpMethod.GET,
-                                                                "/api/events/mine")
-                                                .hasAnyRole("ADMIN", "ORGANIZER")
-
-                                                .requestMatchers(
-                                                                HttpMethod.GET,
-                                                                "/api/events/**",
-                                                                "/api/categories/**",
-                                                                "/api/sessions/**")
+                                                                "/actuator/health")
                                                 .permitAll()
 
-                                                .requestMatchers("/actuator/health")
-                                                .permitAll()
-
+                                                // Swagger temporalmente público
                                                 .requestMatchers(
                                                                 "/swagger-ui/**",
                                                                 "/swagger-ui.html",
                                                                 "/v3/api-docs/**")
                                                 .permitAll()
 
-                                                .requestMatchers("/api/users/**")
+                                                // Usuarios: solo ADMIN
+                                                .requestMatchers(
+                                                                "/api/users/**")
                                                 .hasRole("ADMIN")
 
+                                                // Categorías: lectura pública
+                                                .requestMatchers(
+                                                                HttpMethod.GET,
+                                                                "/api/categories/**")
+                                                .permitAll()
+
+                                                // Categorías: escritura solo ADMIN
                                                 .requestMatchers(
                                                                 HttpMethod.POST,
                                                                 "/api/categories/**")
@@ -102,6 +104,45 @@ public class SecurityConfig {
                                                                 "/api/categories/**")
                                                 .hasRole("ADMIN")
 
+                                                // Eventos propios: debe ir antes del GET general
+                                                .requestMatchers(
+                                                                HttpMethod.GET,
+                                                                "/api/events/mine")
+                                                .hasAnyRole("ADMIN", "ORGANIZER")
+
+                                                // Sesiones anidadas: consultas públicas
+                                                .requestMatchers(
+                                                                HttpMethod.GET,
+                                                                "/api/events/*/sessions",
+                                                                "/api/events/*/sessions/**")
+                                                .permitAll()
+
+                                                // Sesiones anidadas: creación
+                                                .requestMatchers(
+                                                                HttpMethod.POST,
+                                                                "/api/events/*/sessions",
+                                                                "/api/events/*/sessions/**")
+                                                .hasAnyRole("ADMIN", "ORGANIZER")
+
+                                                // Sesiones anidadas: actualización
+                                                .requestMatchers(
+                                                                HttpMethod.PUT,
+                                                                "/api/events/*/sessions/**")
+                                                .hasAnyRole("ADMIN", "ORGANIZER")
+
+                                                // Sesiones anidadas: eliminación
+                                                .requestMatchers(
+                                                                HttpMethod.DELETE,
+                                                                "/api/events/*/sessions/**")
+                                                .hasAnyRole("ADMIN", "ORGANIZER")
+
+                                                // Eventos: consultas públicas
+                                                .requestMatchers(
+                                                                HttpMethod.GET,
+                                                                "/api/events/**")
+                                                .permitAll()
+
+                                                // Eventos: escritura para ADMIN u ORGANIZER
                                                 .requestMatchers(
                                                                 HttpMethod.POST,
                                                                 "/api/events/**")
@@ -122,30 +163,12 @@ public class SecurityConfig {
                                                                 "/api/events/**")
                                                 .hasAnyRole("ADMIN", "ORGANIZER")
 
-                                                .requestMatchers(
-                                                                HttpMethod.POST,
-                                                                "/api/sessions/**")
-                                                .hasAnyRole("ADMIN", "ORGANIZER")
-
-                                                .requestMatchers(
-                                                                HttpMethod.PUT,
-                                                                "/api/sessions/**")
-                                                .hasAnyRole("ADMIN", "ORGANIZER")
-
-                                                .requestMatchers(
-                                                                HttpMethod.PATCH,
-                                                                "/api/sessions/**")
-                                                .hasAnyRole("ADMIN", "ORGANIZER")
-
-                                                .requestMatchers(
-                                                                HttpMethod.DELETE,
-                                                                "/api/sessions/**")
-                                                .hasAnyRole("ADMIN", "ORGANIZER")
-
+                                                // Todo lo restante requiere autenticación
                                                 .anyRequest()
                                                 .authenticated())
 
-                                .authenticationProvider(authenticationProvider())
+                                .authenticationProvider(
+                                                authenticationProvider())
 
                                 .addFilterBefore(
                                                 jwtAuthenticationFilter,

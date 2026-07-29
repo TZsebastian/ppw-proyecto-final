@@ -9,14 +9,26 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface SessionRepository extends JpaRepository<SessionEntity, Long> {
+public interface SessionRepository
+        extends JpaRepository<SessionEntity, Long> {
 
-    List<SessionEntity> findAllByEventId(Long eventId);
+    List<SessionEntity> findAllByEventIdOrderByStartAtAsc(
+            Long eventId);
 
-    Optional<SessionEntity> findByIdAndEventId(Long id, Long eventId);
+    Optional<SessionEntity> findByIdAndEventId(
+            Long id,
+            Long eventId);
 
     List<SessionEntity> findAllByEventIdAndStartAtLessThanAndEndAtGreaterThan(
-            Long eventId, LocalDateTime endAt, LocalDateTime startAt);
+            Long eventId,
+            LocalDateTime endAt,
+            LocalDateTime startAt);
+
+    List<SessionEntity> findAllByEventIdAndIdNotAndStartAtLessThanAndEndAtGreaterThan(
+            Long eventId,
+            Long id,
+            LocalDateTime endAt,
+            LocalDateTime startAt);
 
     long countByEventId(Long eventId);
 }
