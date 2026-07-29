@@ -44,3 +44,20 @@ swagger:
     enabled: ${SWAGGER_SECURITY_ENABLED:false}
     username: ${SWAGGER_USERNAME:}
     password: ${SWAGGER_PASSWORD:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+  endpoint:
+    health:
+      show-details: never
+      show-components: never
+
+  health:
+    redis:
+      enabled: true
+    db:
+      enabled: true

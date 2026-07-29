@@ -78,8 +78,13 @@ public class SecurityConfig {
 
                                                 // Actuator
                                                 .requestMatchers(
-                                                                "/actuator/health")
+                                                                HttpMethod.GET,
+                                                                "/actuator/health",
+                                                                "/actuator/health/**")
                                                 .permitAll()
+
+                                                .requestMatchers("/actuator/**")
+                                                .denyAll()
 
                                                 .requestMatchers(
                                                                 "/swagger-ui/**",
