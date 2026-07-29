@@ -55,4 +55,5 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	environment "JWT_SECRET", "dGVzdC1zZWNyZXQta2V5LWZvci11bml0LXRlc3RzLW9ubHktbm90LWZvci1wcm9kdWN0aW9uLXVzZQ=="
 }
