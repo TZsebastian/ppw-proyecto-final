@@ -17,6 +17,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import ec.edu.ups.icc.academic_events.security.handlers.CustomAccessDeniedHandler;
+import ec.edu.ups.icc.academic_events.security.handlers.CustomAuthenticationEntryPoint;
 
 @Configuration
 @EnableMethodSecurity
@@ -24,12 +26,18 @@ public class SecurityConfig {
 
         private final JwtAuthenticationFilter jwtAuthenticationFilter;
         private final UserDetailsServiceImpl userDetailsService;
+        private final CustomAuthenticationEntryPoint authenticationEntryPoint;
+        private final CustomAccessDeniedHandler accessDeniedHandler;
 
         public SecurityConfig(
                         JwtAuthenticationFilter jwtAuthenticationFilter,
-                        UserDetailsServiceImpl userDetailsService) {
+                        UserDetailsServiceImpl userDetailsService,
+                        CustomAuthenticationEntryPoint authenticationEntryPoint,
+                        CustomAccessDeniedHandler accessDeniedHandler) {
                 this.jwtAuthenticationFilter = jwtAuthenticationFilter;
                 this.userDetailsService = userDetailsService;
+                this.authenticationEntryPoint = authenticationEntryPoint;
+                this.accessDeniedHandler = accessDeniedHandler;
         }
 
         @Bean
@@ -42,6 +50,12 @@ public class SecurityConfig {
 
                                 .sessionManagement(session -> session.sessionCreationPolicy(
                                                 SessionCreationPolicy.STATELESS))
+
+                                .exceptionHandling(exception -> exception
+                                                .authenticationEntryPoint(
+                                                                authenticationEntryPoint)
+                                                .accessDeniedHandler(
+                                                                accessDeniedHandler))
 
                                 .authorizeHttpRequests(auth -> auth
 
@@ -71,11 +85,9 @@ public class SecurityConfig {
                                                                 "/v3/api-docs/**")
                                                 .permitAll()
 
-
                                                 .requestMatchers(
                                                                 "/api/users/**")
                                                 .hasRole("ADMIN")
-
 
                                                 .requestMatchers(
                                                                 HttpMethod.GET,
@@ -108,8 +120,6 @@ public class SecurityConfig {
                                                                 "/api/events/mine")
                                                 .hasAnyRole("ADMIN", "ORGANIZER")
 
-                                
-
                                                 // Participante crea inscripción
                                                 .requestMatchers(
                                                                 HttpMethod.POST,
@@ -141,8 +151,6 @@ public class SecurityConfig {
                                                                 "/api/registrations/*/cancel")
                                                 .hasRole("PARTICIPANT")
 
-                        
-
                                                 // Consultas públicas
                                                 .requestMatchers(
                                                                 HttpMethod.GET,
@@ -165,8 +173,6 @@ public class SecurityConfig {
                                                                 HttpMethod.DELETE,
                                                                 "/api/events/*/sessions/**")
                                                 .hasAnyRole("ADMIN", "ORGANIZER")
-
-                                               
 
                                                 .requestMatchers(
                                                                 HttpMethod.GET,
