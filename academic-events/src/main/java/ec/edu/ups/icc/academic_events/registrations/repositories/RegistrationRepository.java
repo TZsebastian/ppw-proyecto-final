@@ -11,20 +11,52 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface RegistrationRepository extends JpaRepository<RegistrationEntity, Long> {
+public interface RegistrationRepository
+        extends JpaRepository<RegistrationEntity, Long> {
 
-    Optional<RegistrationEntity> findByRegistrationCode(UUID registrationCode);
+    Optional<RegistrationEntity> findByRegistrationCode(
+            UUID registrationCode
+    );
+
+    boolean existsByEventIdAndParticipantId(
+            Long eventId,
+            Long participantId
+    );
 
     boolean existsByEventIdAndParticipantIdAndStatusIn(
-            Long eventId, Long participantId, List<String> statuses);
+            Long eventId,
+            Long participantId,
+            List<String> statuses
+    );
 
-    Optional<RegistrationEntity> findByEventIdAndParticipantId(Long eventId, Long participantId);
+    Optional<RegistrationEntity>
+    findByEventIdAndParticipantId(
+            Long eventId,
+            Long participantId
+    );
 
-    Page<RegistrationEntity> findAllByEventId(Long eventId, Pageable pageable);
+    Optional<RegistrationEntity>
+    findByIdAndParticipantId(
+            Long id,
+            Long participantId
+    );
 
-    List<RegistrationEntity> findAllByEventId(Long eventId);
+    Page<RegistrationEntity> findAllByEventId(
+            Long eventId,
+            Pageable pageable
+    );
 
-    Page<RegistrationEntity> findAllByParticipantId(Long participantId, Pageable pageable);
+    List<RegistrationEntity> findAllByEventId(
+            Long eventId
+    );
 
-    long countByEventIdAndStatus(Long eventId, String status);
+    Page<RegistrationEntity> findAllByParticipantId(
+            Long participantId,
+            Pageable pageable
+    );
+
+    long countByEventIdAndStatus(
+            Long eventId,
+            String status
+    );
 }
