@@ -19,6 +19,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import ec.edu.ups.icc.academic_events.security.handlers.CustomAccessDeniedHandler;
 import ec.edu.ups.icc.academic_events.security.handlers.CustomAuthenticationEntryPoint;
+import org.springframework.core.annotation.Order;
 
 @Configuration
 @EnableMethodSecurity
@@ -41,6 +42,7 @@ public class SecurityConfig {
         }
 
         @Bean
+        @Order(2)
         public SecurityFilterChain securityFilterChain(
                         HttpSecurity http) throws Exception {
 
