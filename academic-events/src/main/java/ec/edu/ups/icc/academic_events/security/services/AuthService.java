@@ -32,289 +32,270 @@ import java.util.UUID;
 @Service
 public class AuthService {
 
-    private static final String ACTIVE_STATUS = "ACTIVE";
-    private static final String PARTICIPANT_ROLE = "PARTICIPANT";
+        private static final String ACTIVE_STATUS = "ACTIVE";
+        private static final String PARTICIPANT_ROLE = "PARTICIPANT";
 
-    private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final AuthenticationManager authenticationManager;
-    private final JwtUtil jwtUtil;
-    private final JwtProperties jwtProperties;
+        private final UserRepository userRepository;
+        private final RoleRepository roleRepository;
+        private final RefreshTokenRepository refreshTokenRepository;
+        private final PasswordEncoder passwordEncoder;
+        private final AuthenticationManager authenticationManager;
+        private final JwtUtil jwtUtil;
+        private final JwtProperties jwtProperties;
+        private final RateLimitService rateLimitService;
 
-    public AuthService(
-            UserRepository userRepository,
-            RoleRepository roleRepository,
-            RefreshTokenRepository refreshTokenRepository,
-            PasswordEncoder passwordEncoder,
-            AuthenticationManager authenticationManager,
-            JwtUtil jwtUtil,
-            JwtProperties jwtProperties
-    ) {
-        this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
-        this.refreshTokenRepository = refreshTokenRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.authenticationManager = authenticationManager;
-        this.jwtUtil = jwtUtil;
-        this.jwtProperties = jwtProperties;
-    }
-
-    @Transactional
-    public AuthResponseDTO register(
-            RegisterRequestDTO request,
-            String clientIp
-    ) {
-        String normalizedEmail = normalizeEmail(request.email());
-
-        if (userRepository.existsByEmail(normalizedEmail)) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "No se pudo completar el registro"
-            );
+        public AuthService(
+                        UserRepository userRepository,
+                        RoleRepository roleRepository,
+                        RefreshTokenRepository refreshTokenRepository,
+                        PasswordEncoder passwordEncoder,
+                        AuthenticationManager authenticationManager,
+                        JwtUtil jwtUtil,
+                        JwtProperties jwtProperties,
+                        RateLimitService rateLimitService) {
+                this.userRepository = userRepository;
+                this.roleRepository = roleRepository;
+                this.refreshTokenRepository = refreshTokenRepository;
+                this.passwordEncoder = passwordEncoder;
+                this.authenticationManager = authenticationManager;
+                this.jwtUtil = jwtUtil;
+                this.jwtProperties = jwtProperties;
+                this.rateLimitService = rateLimitService;
         }
 
-        RoleEntity participantRole = roleRepository
-                .findByName(PARTICIPANT_ROLE)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.INTERNAL_SERVER_ERROR,
-                        "El rol PARTICIPANT no está configurado"
-                ));
+        @Transactional
+        public AuthResponseDTO register(
+                        RegisterRequestDTO request,
+                        String clientIp) {
+                String normalizedEmail = normalizeEmail(request.email());
 
-        LocalDateTime now = LocalDateTime.now();
+                rateLimitService.checkRegisterLimit(clientIp);
 
-        UserEntity user = new UserEntity();
-        user.setFirstName(request.firstName().trim());
-        user.setLastName(request.lastName().trim());
-        user.setEmail(normalizedEmail);
-        user.setPasswordHash(passwordEncoder.encode(request.password()));
-        user.setStatus(ACTIVE_STATUS);
-        user.setCreatedAt(now);
-        user.setUpdatedAt(now);
-        user.getRoles().add(participantRole);
+                if (userRepository.existsByEmail(normalizedEmail)) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "No se pudo completar el registro");
+                }
 
-        UserEntity savedUser = userRepository.save(user);
+                RoleEntity participantRole = roleRepository
+                                .findByName(PARTICIPANT_ROLE)
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.INTERNAL_SERVER_ERROR,
+                                                "El rol PARTICIPANT no está configurado"));
 
-        return createTokenResponse(savedUser, clientIp);
-    }
+                LocalDateTime now = LocalDateTime.now();
 
-    @Transactional
-    public AuthResponseDTO login(
-            LoginRequestDTO request,
-            String clientIp
-    ) {
-        String normalizedEmail = normalizeEmail(request.email());
+                UserEntity user = new UserEntity();
+                user.setFirstName(request.firstName().trim());
+                user.setLastName(request.lastName().trim());
+                user.setEmail(normalizedEmail);
+                user.setPasswordHash(passwordEncoder.encode(request.password()));
+                user.setStatus(ACTIVE_STATUS);
+                user.setCreatedAt(now);
+                user.setUpdatedAt(now);
+                user.getRoles().add(participantRole);
 
-        Authentication authentication;
+                UserEntity savedUser = userRepository.save(user);
 
-        try {
-            authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(
-                            normalizedEmail,
-                            request.password()
-                    )
-            );
-        } catch (BadCredentialsException exception) {
-            throw new ResponseStatusException(
-                    HttpStatus.UNAUTHORIZED,
-                    "Credenciales inválidas"
-            );
+                return createTokenResponse(savedUser, clientIp);
         }
 
-        UserDetailsImpl userDetails =
-                (UserDetailsImpl) authentication.getPrincipal();
+        @Transactional
+        public AuthResponseDTO login(
+                        LoginRequestDTO request,
+                        String clientIp) {
+                String normalizedEmail = normalizeEmail(request.email());
 
-        UserEntity user = userRepository.findById(userDetails.getId())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.UNAUTHORIZED,
-                        "Credenciales inválidas"
-                ));
+                rateLimitService.checkLoginLimit(
+                                clientIp,
+                                normalizedEmail);
 
-        revokeActiveTokens(user.getId());
+                Authentication authentication;
 
-        return createTokenResponse(user, clientIp);
-    }
+                try {
+                        authentication = authenticationManager.authenticate(
+                                        new UsernamePasswordAuthenticationToken(
+                                                        normalizedEmail,
+                                                        request.password()));
+                } catch (BadCredentialsException exception) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.UNAUTHORIZED,
+                                        "Credenciales inválidas");
+                }
 
-    @Transactional
-    public AuthResponseDTO refresh(
-            RefreshTokenRequestDTO request,
-            String clientIp
-    ) {
-        String rawRefreshToken = request.refreshToken();
+                UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
 
-        if (!jwtUtil.validateRefreshToken(rawRefreshToken)) {
-            throw invalidRefreshToken();
+                UserEntity user = userRepository.findById(userDetails.getId())
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.UNAUTHORIZED,
+                                                "Credenciales inválidas"));
+
+                revokeActiveTokens(user.getId());
+
+                return createTokenResponse(user, clientIp);
         }
 
-        UUID tokenId;
+        @Transactional
+        public AuthResponseDTO refresh(
+                        RefreshTokenRequestDTO request,
+                        String clientIp) {
+                String rawRefreshToken = request.refreshToken();
 
-        try {
-            tokenId = jwtUtil.getTokenId(rawRefreshToken);
-        } catch (RuntimeException exception) {
-            throw invalidRefreshToken();
+                if (!jwtUtil.validateRefreshToken(rawRefreshToken)) {
+                        throw invalidRefreshToken();
+                }
+
+                UUID tokenId;
+
+                try {
+                        tokenId = jwtUtil.getTokenId(rawRefreshToken);
+                } catch (RuntimeException exception) {
+                        throw invalidRefreshToken();
+                }
+
+                if (tokenId == null) {
+                        throw invalidRefreshToken();
+                }
+
+                RefreshTokenEntity storedToken = refreshTokenRepository
+                                .findByTokenId(tokenId)
+                                .orElseThrow(this::invalidRefreshToken);
+
+                String receivedHash = jwtUtil.hashToken(rawRefreshToken);
+
+                if (!storedToken.getTokenHash().equals(receivedHash)
+                                || storedToken.isRevoked()
+                                || storedToken.isExpired()) {
+                        throw invalidRefreshToken();
+                }
+
+                UserEntity user = storedToken.getUser();
+
+                if (!ACTIVE_STATUS.equals(user.getStatus())) {
+                        throw invalidRefreshToken();
+                }
+
+                UUID newTokenId = UUID.randomUUID();
+
+                UserDetailsImpl userDetails = UserDetailsImpl.build(user);
+
+                String newAccessToken = jwtUtil.generateAccessToken(userDetails);
+
+                String newRefreshToken = jwtUtil.generateRefreshToken(userDetails, newTokenId);
+
+                LocalDateTime now = LocalDateTime.now();
+
+                storedToken.setRevokedAt(now);
+                storedToken.setReplacedByTokenId(newTokenId);
+                refreshTokenRepository.save(storedToken);
+
+                RefreshTokenEntity replacementToken = buildRefreshTokenEntity(
+                                user,
+                                newTokenId,
+                                newRefreshToken,
+                                clientIp);
+
+                refreshTokenRepository.save(replacementToken);
+
+                return new AuthResponseDTO(
+                                newAccessToken,
+                                newRefreshToken,
+                                "Bearer",
+                                jwtProperties.getAccessExpiration() / 1000,
+                                CurrentUserResponseDTO.fromEntity(user));
         }
 
-        if (tokenId == null) {
-            throw invalidRefreshToken();
+        @Transactional
+        public void logout(RefreshTokenRequestDTO request) {
+                String rawRefreshToken = request.refreshToken();
+                String tokenHash = jwtUtil.hashToken(rawRefreshToken);
+
+                refreshTokenRepository.findByTokenHash(tokenHash)
+                                .filter(token -> !token.isRevoked())
+                                .ifPresent(token -> {
+                                        token.setRevokedAt(LocalDateTime.now());
+                                        refreshTokenRepository.save(token);
+                                });
         }
 
-        RefreshTokenEntity storedToken = refreshTokenRepository
-                .findByTokenId(tokenId)
-                .orElseThrow(this::invalidRefreshToken);
+        @Transactional(readOnly = true)
+        public CurrentUserResponseDTO getCurrentUser(Long userId) {
+                UserEntity user = userRepository.findById(userId)
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Usuario no encontrado"));
 
-        String receivedHash = jwtUtil.hashToken(rawRefreshToken);
-
-        if (!storedToken.getTokenHash().equals(receivedHash)
-                || storedToken.isRevoked()
-                || storedToken.isExpired()) {
-            throw invalidRefreshToken();
+                return CurrentUserResponseDTO.fromEntity(user);
         }
 
-        UserEntity user = storedToken.getUser();
+        private AuthResponseDTO createTokenResponse(
+                        UserEntity user,
+                        String clientIp) {
+                UserDetailsImpl userDetails = UserDetailsImpl.build(user);
 
-        if (!ACTIVE_STATUS.equals(user.getStatus())) {
-            throw invalidRefreshToken();
+                String accessToken = jwtUtil.generateAccessToken(userDetails);
+
+                UUID refreshTokenId = UUID.randomUUID();
+
+                String refreshToken = jwtUtil.generateRefreshToken(
+                                userDetails,
+                                refreshTokenId);
+
+                RefreshTokenEntity refreshTokenEntity = buildRefreshTokenEntity(
+                                user,
+                                refreshTokenId,
+                                refreshToken,
+                                clientIp);
+
+                refreshTokenRepository.save(refreshTokenEntity);
+
+                return new AuthResponseDTO(
+                                accessToken,
+                                refreshToken,
+                                "Bearer",
+                                jwtProperties.getAccessExpiration() / 1000,
+                                CurrentUserResponseDTO.fromEntity(user));
         }
 
-        UUID newTokenId = UUID.randomUUID();
+        private RefreshTokenEntity buildRefreshTokenEntity(
+                        UserEntity user,
+                        UUID tokenId,
+                        String rawRefreshToken,
+                        String clientIp) {
+                RefreshTokenEntity entity = new RefreshTokenEntity();
 
-        UserDetailsImpl userDetails = UserDetailsImpl.build(user);
+                entity.setTokenId(tokenId);
+                entity.setUser(user);
+                entity.setTokenHash(jwtUtil.hashToken(rawRefreshToken));
+                entity.setExpiresAt(
+                                LocalDateTime.now().plus(
+                                                Duration.ofMillis(
+                                                                jwtProperties.getRefreshExpiration())));
+                entity.setCreatedByIp(clientIp);
 
-        String newAccessToken =
-                jwtUtil.generateAccessToken(userDetails);
+                return entity;
+        }
 
-        String newRefreshToken =
-                jwtUtil.generateRefreshToken(userDetails, newTokenId);
+        private void revokeActiveTokens(Long userId) {
+                List<RefreshTokenEntity> activeTokens = refreshTokenRepository
+                                .findByUserIdAndRevokedAtIsNull(userId);
 
-        LocalDateTime now = LocalDateTime.now();
+                LocalDateTime now = LocalDateTime.now();
 
-        storedToken.setRevokedAt(now);
-        storedToken.setReplacedByTokenId(newTokenId);
-        refreshTokenRepository.save(storedToken);
+                activeTokens.stream()
+                                .filter(token -> !token.isExpired())
+                                .forEach(token -> token.setRevokedAt(now));
 
-        RefreshTokenEntity replacementToken =
-                buildRefreshTokenEntity(
-                        user,
-                        newTokenId,
-                        newRefreshToken,
-                        clientIp
-                );
+                refreshTokenRepository.saveAll(activeTokens);
+        }
 
-        refreshTokenRepository.save(replacementToken);
+        private String normalizeEmail(String email) {
+                return email.trim().toLowerCase(Locale.ROOT);
+        }
 
-        return new AuthResponseDTO(
-                newAccessToken,
-                newRefreshToken,
-                "Bearer",
-                jwtProperties.getAccessExpiration() / 1000,
-                CurrentUserResponseDTO.fromEntity(user)
-        );
-    }
-
-    @Transactional
-    public void logout(RefreshTokenRequestDTO request) {
-        String rawRefreshToken = request.refreshToken();
-        String tokenHash = jwtUtil.hashToken(rawRefreshToken);
-
-        refreshTokenRepository.findByTokenHash(tokenHash)
-                .filter(token -> !token.isRevoked())
-                .ifPresent(token -> {
-                    token.setRevokedAt(LocalDateTime.now());
-                    refreshTokenRepository.save(token);
-                });
-    }
-
-    @Transactional(readOnly = true)
-    public CurrentUserResponseDTO getCurrentUser(Long userId) {
-        UserEntity user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Usuario no encontrado"
-                ));
-
-        return CurrentUserResponseDTO.fromEntity(user);
-    }
-
-    private AuthResponseDTO createTokenResponse(
-            UserEntity user,
-            String clientIp
-    ) {
-        UserDetailsImpl userDetails = UserDetailsImpl.build(user);
-
-        String accessToken = jwtUtil.generateAccessToken(userDetails);
-
-        UUID refreshTokenId = UUID.randomUUID();
-
-        String refreshToken = jwtUtil.generateRefreshToken(
-                userDetails,
-                refreshTokenId
-        );
-
-        RefreshTokenEntity refreshTokenEntity =
-                buildRefreshTokenEntity(
-                        user,
-                        refreshTokenId,
-                        refreshToken,
-                        clientIp
-                );
-
-        refreshTokenRepository.save(refreshTokenEntity);
-
-        return new AuthResponseDTO(
-                accessToken,
-                refreshToken,
-                "Bearer",
-                jwtProperties.getAccessExpiration() / 1000,
-                CurrentUserResponseDTO.fromEntity(user)
-        );
-    }
-
-    private RefreshTokenEntity buildRefreshTokenEntity(
-            UserEntity user,
-            UUID tokenId,
-            String rawRefreshToken,
-            String clientIp
-    ) {
-        RefreshTokenEntity entity = new RefreshTokenEntity();
-
-        entity.setTokenId(tokenId);
-        entity.setUser(user);
-        entity.setTokenHash(jwtUtil.hashToken(rawRefreshToken));
-        entity.setExpiresAt(
-                LocalDateTime.now().plus(
-                        Duration.ofMillis(
-                                jwtProperties.getRefreshExpiration()
-                        )
-                )
-        );
-        entity.setCreatedByIp(clientIp);
-
-        return entity;
-    }
-
-    private void revokeActiveTokens(Long userId) {
-        List<RefreshTokenEntity> activeTokens =
-                refreshTokenRepository
-                        .findByUserIdAndRevokedAtIsNull(userId);
-
-        LocalDateTime now = LocalDateTime.now();
-
-        activeTokens.stream()
-                .filter(token -> !token.isExpired())
-                .forEach(token -> token.setRevokedAt(now));
-
-        refreshTokenRepository.saveAll(activeTokens);
-    }
-
-    private String normalizeEmail(String email) {
-        return email.trim().toLowerCase(Locale.ROOT);
-    }
-
-    private ResponseStatusException invalidRefreshToken() {
-        return new ResponseStatusException(
-                HttpStatus.UNAUTHORIZED,
-                "Refresh token inválido o expirado"
-        );
-    }
+        private ResponseStatusException invalidRefreshToken() {
+                return new ResponseStatusException(
+                                HttpStatus.UNAUTHORIZED,
+                                "Refresh token inválido o expirado");
+        }
 }
