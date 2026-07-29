@@ -35,3 +35,6 @@ jwt:
   issuer: academic-events-api
   header: Authorization
   prefix: "Bearer "
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:4200,http://localhost:5173}
