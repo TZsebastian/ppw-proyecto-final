@@ -58,7 +58,11 @@ public class SecurityConfig {
                                                                 "/api/auth/me")
                                                 .authenticated()
 
-                                      
+                                                .requestMatchers(
+                                                                HttpMethod.GET,
+                                                                "/api/events/mine")
+                                                .hasAnyRole("ADMIN", "ORGANIZER")
+
                                                 .requestMatchers(
                                                                 HttpMethod.GET,
                                                                 "/api/events/**",
@@ -66,22 +70,18 @@ public class SecurityConfig {
                                                                 "/api/sessions/**")
                                                 .permitAll()
 
-                                
                                                 .requestMatchers("/actuator/health")
                                                 .permitAll()
 
-                               
                                                 .requestMatchers(
                                                                 "/swagger-ui/**",
                                                                 "/swagger-ui.html",
                                                                 "/v3/api-docs/**")
                                                 .permitAll()
 
-                                                
                                                 .requestMatchers("/api/users/**")
                                                 .hasRole("ADMIN")
 
-                                        
                                                 .requestMatchers(
                                                                 HttpMethod.POST,
                                                                 "/api/categories/**")
@@ -102,7 +102,6 @@ public class SecurityConfig {
                                                                 "/api/categories/**")
                                                 .hasRole("ADMIN")
 
-                                                // Eventos: escritura ADMIN u ORGANIZER
                                                 .requestMatchers(
                                                                 HttpMethod.POST,
                                                                 "/api/events/**")
@@ -143,6 +142,7 @@ public class SecurityConfig {
                                                                 "/api/sessions/**")
                                                 .hasAnyRole("ADMIN", "ORGANIZER")
 
+                                                // Todo lo demás requiere autenticación
                                                 .anyRequest()
                                                 .authenticated())
 
