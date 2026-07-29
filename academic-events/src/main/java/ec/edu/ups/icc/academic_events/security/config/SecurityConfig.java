@@ -206,6 +206,12 @@ public class SecurityConfig {
                                                                 "/api/events/**")
                                                 .hasAnyRole("ADMIN", "ORGANIZER")
 
+                                                // Reportes: ADMIN u ORGANIZER
+                                                .requestMatchers(
+                                                                HttpMethod.GET,
+                                                                "/api/reports/**")
+                                                .hasAnyRole("ADMIN", "ORGANIZER")
+
                                                 .anyRequest()
                                                 .authenticated())
 
