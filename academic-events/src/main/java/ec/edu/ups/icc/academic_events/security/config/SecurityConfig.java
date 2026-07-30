@@ -78,12 +78,10 @@ public class SecurityConfig {
 
                                                 // Actuator
                                                 .requestMatchers(
-                                                                "/api/actuator/health",
-                                                                "/api/actuator/health/**")
+                                                                HttpMethod.GET,
+                                                                "/actuator/health",
+                                                                "/actuator/health/**")
                                                 .permitAll()
-
-                                                .requestMatchers("/api/actuator/**")
-                                                .denyAll()
 
                                                 .requestMatchers("/actuator/**")
                                                 .denyAll()
