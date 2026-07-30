@@ -16,9 +16,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.nio.charset.StandardCharsets;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+
 @RestController
 @RequestMapping("/api/reports")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearerAuth")
 public class RegistrationCertificateController {
 
     private final RegistrationCertificateService certificateService;
