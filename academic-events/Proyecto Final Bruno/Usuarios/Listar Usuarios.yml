@@ -1,0 +1,27 @@
+info:
+  name: Listar Usuarios
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: http://localhost:8080/api/users?page=0&size=10&sort=id,asc
+  params:
+    - name: page
+      value: "0"
+      type: query
+    - name: size
+      value: "10"
+      type: query
+    - name: sort
+      value: id,asc
+      type: query
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIiwiZW1haWwiOiJhZG1pbkBhY2FkZW1pYy50ZXN0Iiwicm9sZXMiOiJST0xFX0FETUlOIiwidHlwZSI6ImFjY2VzcyIsImlzcyI6ImFjYWRlbWljLWV2ZW50cy1hcGkiLCJpYXQiOjE3ODUzNDM0NzksImV4cCI6MTc4NTM0NDM3OX0.USeXTurny0ZWc6h4RWc3hOAivP-2HvIvCEDYEc5wIyw
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

@@ -1,0 +1,28 @@
+info:
+  name: Crear Sesion
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:8080/api/events/12/sessions
+  body:
+    type: json
+    data: |-
+      {
+        "title": "Cierre de seguridad web",
+        "description": "Conclusiones y preguntas.",
+        "startAt": "2026-08-20T10:00:00",
+        "endAt": "2026-08-20T10:45:00",
+        "location": null,
+        "virtualUrl": "https://meet.example.com/sesion-2"
+      }
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIyIiwiZW1haWwiOiJtYXJpYS5jb3JkZXJvQGFjYWRlbWljLnRlc3QiLCJyb2xlcyI6IlJPTEVfT1JHQU5JWkVSLFJPTEVfUEFSVElDSVBBTlQiLCJ0eXBlIjoiYWNjZXNzIiwiaXNzIjoiYWNhZGVtaWMtZXZlbnRzLWFwaSIsImlhdCI6MTc4NTM0NTc5OSwiZXhwIjoxNzg1MzQ2Njk5fQ.CoKgaCYSBs_1y5DQqYMJfIc0mGsSz-nfagRqNyjPs8U
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

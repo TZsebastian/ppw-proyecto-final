@@ -1,0 +1,17 @@
+info:
+  name: Untitled 2
+  type: http
+  seq: 9
+
+http:
+  method: POST
+  url: http://localhost:8080/api/events/12/registrations
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIyIiwiZW1haWwiOiJtYXJpYS5jb3JkZXJvQGFjYWRlbWljLnRlc3QiLCJyb2xlcyI6IlJPTEVfT1JHQU5JWkVSLFJPTEVfUEFSVElDSVBBTlQiLCJ0eXBlIjoiYWNjZXNzIiwiaXNzIjoiYWNhZGVtaWMtZXZlbnRzLWFwaSIsImlhdCI6MTc4NTM1OTAxNCwiZXhwIjoxNzg1MzU5OTE0fQ.7pfdhNygslJK-MPmcN-sbUn4uKUoFnQEEQLlCNr3Wg8
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

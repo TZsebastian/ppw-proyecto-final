@@ -1,0 +1,17 @@
+info:
+  name: Bloquear Usuario
+  type: http
+  seq: 1
+
+http:
+  method: PATCH
+  url: http://localhost:8080/api/users/5/unblock
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIiwiZW1haWwiOiJhZG1pbkBhY2FkZW1pYy50ZXN0Iiwicm9sZXMiOiJST0xFX0FETUlOIiwidHlwZSI6ImFjY2VzcyIsImlzcyI6ImFjYWRlbWljLWV2ZW50cy1hcGkiLCJpYXQiOjE3ODUzNDQ2MTIsImV4cCI6MTc4NTM0NTUxMn0.zfi5on8yRQvygJZ1k_eAcRBnPuj_C6Jmjwoko9BIzw8
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

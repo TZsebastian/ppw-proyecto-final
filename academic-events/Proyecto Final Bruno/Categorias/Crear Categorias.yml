@@ -1,0 +1,24 @@
+info:
+  name: Crear Categorias
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: http://localhost:8080/api/categories
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Computación en la Nube",
+        "description": "Eventos relacionados con servicios cloud y arquitectura distribuida"
+      }
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIiwiZW1haWwiOiJhZG1pbkBhY2FkZW1pYy50ZXN0Iiwicm9sZXMiOiJST0xFX0FETUlOIiwidHlwZSI6ImFjY2VzcyIsImlzcyI6ImFjYWRlbWljLWV2ZW50cy1hcGkiLCJpYXQiOjE3ODUzNDQwNDQsImV4cCI6MTc4NTM0NDk0NH0.QhUP5xP-lq-sJCgCeIlqpRMR6XhMb5GMV_9U2wD9Db8
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

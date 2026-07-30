@@ -1,0 +1,28 @@
+info:
+  name: Probar sesion fuera de horario
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: http://localhost:8080/api/events/12/sessions
+  body:
+    type: json
+    data: |-
+      {
+        "title": "Sesión fuera del horario",
+        "description": "Prueba de validación.",
+        "startAt": "2026-08-20T08:00:00",
+        "endAt": "2026-08-20T08:30:00",
+        "location": null,
+        "virtualUrl": "https://meet.example.com/prueba"
+      }
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIyIiwiZW1haWwiOiJtYXJpYS5jb3JkZXJvQGFjYWRlbWljLnRlc3QiLCJyb2xlcyI6IlJPTEVfT1JHQU5JWkVSLFJPTEVfUEFSVElDSVBBTlQiLCJ0eXBlIjoiYWNjZXNzIiwiaXNzIjoiYWNhZGVtaWMtZXZlbnRzLWFwaSIsImlhdCI6MTc4NTM0NTc5OSwiZXhwIjoxNzg1MzQ2Njk5fQ.CoKgaCYSBs_1y5DQqYMJfIc0mGsSz-nfagRqNyjPs8U
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

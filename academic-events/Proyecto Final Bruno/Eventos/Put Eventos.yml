@@ -1,0 +1,35 @@
+info:
+  name: Put Eventos
+  type: http
+  seq: 3
+
+http:
+  method: PUT
+  url: http://localhost:8080/api/events/12
+  body:
+    type: json
+    data: |-
+      {
+        "title": "Webinar de Ciberseguridad",
+        "description": "Evento académico sobre seguridad en aplicaciones web.",
+        "modality": "VIRTUAL",
+        "location": null,
+        "virtualUrl": "https://meet.example.com/ciberseguridad",
+        "capacity": 100,
+        "registrationStartAt": "2026-07-20T08:00:00",
+        "registrationEndAt": "2026-08-15T18:00:00",
+        "startAt": "2026-08-20T09:00:00",
+        "endAt": "2026-08-20T11:00:00",
+        "categoryId": 3,
+        "status": "PUBLISHED",
+        "version": 0
+      }
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIyIiwiZW1haWwiOiJtYXJpYS5jb3JkZXJvQGFjYWRlbWljLnRlc3QiLCJyb2xlcyI6IlJPTEVfT1JHQU5JWkVSLFJPTEVfUEFSVElDSVBBTlQiLCJ0eXBlIjoiYWNjZXNzIiwiaXNzIjoiYWNhZGVtaWMtZXZlbnRzLWFwaSIsImlhdCI6MTc4NTM0NjgyMiwiZXhwIjoxNzg1MzQ3NzIyfQ.2rrFGo3A7Zntc0k0uLP7uXOUJdxhxdFECYV_zc2rLwo
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
