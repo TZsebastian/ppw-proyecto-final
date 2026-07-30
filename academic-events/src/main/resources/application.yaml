@@ -3,14 +3,13 @@ spring:
     name: academic-events
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/academic_events_db
-    username: ups
-    password: ups123
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/academic_events_db}
+    username: ${DB_USERNAME:ups}
+    password: ${DB_PASSWORD:ups123}
 
   flyway:
     enabled: true
-    baseline-on-migrate: true
-    baseline-version: 1
+    baseline-on-migrate: false
     locations: classpath:db/migration
 
   jpa:
@@ -23,8 +22,9 @@ spring:
 
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
 
 server:
   port: ${PORT:8080}
